@@ -1,0 +1,18 @@
+[project]
+name = "embedding-api"
+version = "0.1.0"
+description = "API for embedding model"
+authors = [
+    {name = "Your Name",email = "you@example.com"}
+]
+license = {text = "MIT"}
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi[standard] (>=0.135.0,<0.136.0)",
+    "optimum-onnx (>=0.1.0,<0.2.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
