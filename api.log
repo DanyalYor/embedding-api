@@ -54,3 +54,21 @@ INFO:uvicorn.error:Waiting for application shutdown.
 INFO:embedding_api:shutting down app
 INFO:uvicorn.error:Application shutdown complete.
 INFO:uvicorn.error:Finished server process [7699]
+INFO:embedding_api:starting up app
+INFO:embedding_api:model service url: http://localhost:8001
+INFO:uvicorn.error:Application startup complete.
+INFO:uvicorn.error:Shutting down
+INFO:uvicorn.error:Waiting for application shutdown.
+INFO:embedding_api:shutting down app
+INFO:uvicorn.error:Application shutdown complete.
+INFO:uvicorn.error:Finished server process [32151]
+INFO:embedding_api:starting up app
+INFO:embedding_api:model service url: http://localhost:8001
+INFO:uvicorn.error:Application startup complete.
+INFO:httpx:HTTP Request: POST http://localhost:8001/embed "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:8001/embed "HTTP/1.1 200 OK"
+INFO:uvicorn.error:Shutting down
+INFO:uvicorn.error:Waiting for application shutdown.
+INFO:embedding_api:shutting down app
+INFO:uvicorn.error:Application shutdown complete.
+INFO:uvicorn.error:Finished server process [32300]

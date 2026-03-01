@@ -1,0 +1,55 @@
+name: CI (push)
+
+on:
+  push:
+    branches:
+      - main
+      - '[0-9]+.[0-9]+.x'
+  pull_request: 
+    branches:
+      - main
+      - '[0-9]+.[0-9]+.x'
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      
+      - name: Install Poetry
+        run: pip install poetry
+      
+      - name: Install dependencies (dev)
+        run: poetry install --with dev
+      
+      - name: Run linter
+        run: poetry run ruff check model-service/ embedding-api/
+      
+      - name: Type check
+        run: poetry run pyright model-service/ embedding-api/
+
+  unit-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      
+      - name: Install Poetry
+        run: pip install poetry
+      
+      - name: Install dependencies (all + dev)
+        run: poetry install --with dev
+      
+      - name: Run unit tests
+        run: |
+          poetry run pytest model-service/tests/ -v
+          poetry run pytest embedding-api/tests/ -v
