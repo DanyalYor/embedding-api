@@ -28,8 +28,7 @@ class EmbedRequest(BaseModel):
     def validate_task_type(cls, v):
         if v is not None and v not in VALID_TASK_TYPES:
             raise HTTPException(
-                status_code=422,
-                detail=f"Invalid task_type. Must be one of: {VALID_TASK_TYPES}"
+                status_code=422, detail=f"Invalid task_type. Must be one of: {VALID_TASK_TYPES}"
             )
         return v
 
@@ -71,5 +70,5 @@ async def embed(request: Request, body: EmbedRequest) -> EmbedResponse:
         )
         response.raise_for_status()
         data = response.json()
-    
+
     return EmbedResponse(embeddings=data["embeddings"])

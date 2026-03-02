@@ -27,8 +27,7 @@ class EmbedRequest(BaseModel):
     def validate_task_type(cls, v):
         if v is not None and v not in VALID_TASK_TYPES:
             raise HTTPException(
-                status_code=422,
-                detail=f"Invalid task_type. Must be one of: {VALID_TASK_TYPES}"
+                status_code=422, detail=f"Invalid task_type. Must be one of: {VALID_TASK_TYPES}"
             )
         return v
 
@@ -94,4 +93,5 @@ async def embed(request: EmbedRequest):
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8001)
