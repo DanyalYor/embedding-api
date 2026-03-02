@@ -33,3 +33,6 @@ api.log
 
 # poetry
 poetry.lock
+
+# cached model
+models/
