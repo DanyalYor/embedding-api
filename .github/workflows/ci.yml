@@ -48,6 +48,10 @@ jobs:
           path: .venv
           key: venv-${{ runner.os }}-py3.13-${{ hashFiles('**/poetry.lock') }}
 
+      - name: Generate lock file
+        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+        run: poetry lock
+
       - name: Install dependencies
         if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
         run: poetry install --no-interaction --with dev
@@ -83,6 +87,10 @@ jobs:
         with:
           path: .venv
           key: venv-${{ runner.os }}-py3.13-${{ hashFiles('**/poetry.lock') }}
+
+      - name: Generate lock file
+        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+        run: poetry lock
 
       - name: Install dependencies
         if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
