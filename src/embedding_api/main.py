@@ -1,74 +1,122 @@
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
-from fastapi.exceptions import HTTPException
+import time
+import structlog
 from contextlib import asynccontextmanager
-import logging
-import httpx
-from pydantic import BaseModel, field_validator
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
+from embedding_api.config import settings
+from embedding_api.data_models import EmbedRequest, EmbedResponse
+from embedding_api.services import EmbeddingService
+from embedding_api.logger import configure_logging  
 
-logger = logging.getLogger("embedding_api")
-
-MODEL_SERVICE_URL = "http://localhost:8001"
-VALID_TASK_TYPES = ["query", "passage"]
-
-
-class EmbedRequest(BaseModel):
-    texts: list[str]
-    task_type: str | None = None
-
-    @field_validator("texts")
-    @classmethod
-    def validate_texts_not_empty(cls, v):
-        if not v:
-            raise HTTPException(status_code=422, detail="texts cannot be empty")
-        return v
-
-    @field_validator("task_type")
-    @classmethod
-    def validate_task_type(cls, v):
-        if v is not None and v not in VALID_TASK_TYPES:
-            raise HTTPException(
-                status_code=422, detail=f"Invalid task_type. Must be one of: {VALID_TASK_TYPES}"
-            )
-        return v
-
-
-class EmbedResponse(BaseModel):
-    embeddings: list[list[float]]
-
+logger = structlog.get_logger()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logging.basicConfig(filename="api.log", level=logging.INFO)
-    logger.info("starting up app")
-    logger.info(f"model service url: {MODEL_SERVICE_URL}")
+    start = time.time()
+    logger.info("app_starting", model=settings.model_name, provider=settings.provider)
+    
+    try:
+        app.state.service = EmbeddingService()
+        duration = (time.time() - start) * 1000
+        logger.info("model_loaded", duration_ms=round(duration, 2))
+    except Exception as e:
+        logger.error("model_load_failed", error=str(e), exc_info=True)
+        raise
+    
     yield
-    logger.info("shutting down app")
-
+    
+    logger.info("app_shutting_down")
+    app.state.service = None
 
 app = FastAPI(
-    title="Embedding API",
-    description="API for generating embeddings using the multilingual-e5-large model.",
-    version="0.1.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
+    title=settings.app_name,
+    version=settings.app_version,
     lifespan=lifespan,
 )
 
+# Middleware: log every request/response
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start = time.time()
+    path = request.url.path
+    method = request.method
+    client_ip = request.client.host if request.client else "unknown"
+    
+    logger.debug("request_received", path=path, method=method, client_ip=client_ip)
+    
+    try:
+        response = await call_next(request)
+        duration = (time.time() - start) * 1000
+        logger.info(
+            "request_completed",
+            path=path,
+            method=method,
+            status_code=response.status_code,
+            duration_ms=round(duration, 2),
+        )
+        return response
+    except Exception as e:
+        duration = (time.time() - start) * 1000
+        logger.error(
+            "request_failed",
+            path=path,
+            method=method,
+            error_type=type(e).__name__,
+            duration_ms=round(duration, 2),
+            exc_info=True,
+        )
+        raise
 
 @app.get("/health")
 async def health_check() -> JSONResponse:
-    return JSONResponse({"status": "healthy"})
+    return JSONResponse(content={"status": "healthy"}, status_code=200)
 
+@app.get("/ready")
+async def readiness_check() -> JSONResponse:
+    ready = hasattr(app.state, "service") and app.state.service is not None
+    logger.debug("readiness_check", ready=ready)
+    return JSONResponse(
+        content={"status": "ready" if ready else "not_ready"},
+        status_code=200 if ready else 503,
+    )
 
 @app.post("/embed", response_model=EmbedResponse)
-async def embed(request: Request, body: EmbedRequest) -> EmbedResponse:
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            f"{MODEL_SERVICE_URL}/embed",
-            json={"texts": body.texts, "task_type": body.task_type},
+async def embed(body: EmbedRequest, request: Request) -> EmbedResponse:
+    service = app.state.service
+    if service is None:
+        logger.error("inference_attempted_without_model")
+        raise HTTPException(status_code=503, detail="Model service not ready")
+    
+    client_ip = request.client.host if request.client else "unknown"
+    logger.debug(
+        "inference_started",
+        batch_size=len(body.texts),
+        task_type=body.task_type,
+        client_ip=client_ip,
+    )
+    
+    try:
+        start = time.time()
+        embeddings = service.embed(body.texts, body.task_type)
+        duration = (time.time() - start) * 1000
+        
+        logger.info(
+            "inference_completed",
+            batch_size=len(body.texts),
+            embedding_dim=len(embeddings[0]) if embeddings else 0,
+            duration_ms=round(duration, 2),
         )
-        response.raise_for_status()
-        data = response.json()
-
-    return EmbedResponse(embeddings=data["embeddings"])
+        
+        return EmbedResponse(embeddings=embeddings, model=service.model_name)
+    except HTTPException:
+        # Re-raise validation errors without logging as error
+        raise
+    except Exception as e:
+        logger.error(
+            "inference_failed",
+            error_type=type(e).__name__,
+            error=str(e),
+            batch_size=len(body.texts),
+            exc_info=True,
+        )
+        raise HTTPException(status_code=500, detail="Inference error") from e
