@@ -1,6 +1,9 @@
 import sys
+
 import structlog
+
 from embedding_api.config import settings
+
 
 def configure_logging() -> None:
     processors: list[structlog.typing.Processor] = [

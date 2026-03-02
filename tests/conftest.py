@@ -1,7 +1,10 @@
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 from fastapi.testclient import TestClient
+
 from embedding_api.main import app
+
 
 @pytest.fixture(autouse=True)
 def mock_embedding_service():

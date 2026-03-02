@@ -1,11 +1,13 @@
 import time
-import structlog
 from contextlib import asynccontextmanager
+
+import structlog
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
+
 from embedding_api.config import settings
-from embedding_api.logger import configure_logging
 from embedding_api.data_models import EmbedRequest, EmbedResponse
+from embedding_api.logger import configure_logging
 from embedding_api.services import EmbeddingService
 
 configure_logging()

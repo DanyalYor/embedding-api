@@ -1,8 +1,10 @@
 import time
 from pathlib import Path
+
 import structlog
 from sentence_transformers import SentenceTransformer
 from transformers import AutoTokenizer
+
 from embedding_api.config import settings
 
 logger = structlog.get_logger()
