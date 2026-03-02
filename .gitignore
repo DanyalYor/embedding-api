@@ -1,3 +1,35 @@
+# python
 __pycache__/
 *.py[cod]
 *$py.class
+*.so
+
+# virtual environments
+.venv/
+venv/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+
+# testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# linting/formatting
+.ruff_cache/
+.mypy_cache/
+
+# logs
+*.log
+api.log
+
+# secrets
+.env
+.env.local
+.env.*.local
+
+# poetry
+poetry.lock

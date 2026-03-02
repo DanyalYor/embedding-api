@@ -1,18 +1,44 @@
-[project]
+[tool.poetry]
 name = "embedding-api"
 version = "0.1.0"
-description = "API for embedding model"
-authors = [
-    {name = "Your Name",email = "you@example.com"}
-]
-license = {text = "MIT"}
-requires-python = ">=3.13"
-dependencies = [
-    "fastapi[standard] (>=0.135.0,<0.136.0)",
-    "optimum-onnx (>=0.1.0,<0.2.0)"
-]
+description = "Production-ready Embedding API"
+authors = ["dayo"]
+packages = [{include = "embedding_api", from = "src"}]
 
+[tool.poetry.dependencies]
+python = "^3.13"
+fastapi = "^0.109.0"
+uvicorn = {extras = ["standard"], version = "^0.27.0"}
+pydantic = "^2.5.0"
+pydantic-settings = "^2.1.0"
+structlog = "^25.5.0"
+numpy = "^2.1.0"
+ml-dtypes = "^0.5.0"
+onnx = "^1.19.0"
+onnxruntime = "^1.24.2"
+optimum = {extras = ["onnxruntime"], version = "1.17.1"}
+sentence-transformers = "^3.2.0"
+transformers = "^4.40.0"
+torch = ">=2.5.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0.0"
+pyright = "^1.1.0"
+httpx = "^0.26.0"
 
 [build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
+requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+line-length = 88
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "C4", "UP", "RUF"]
+ignore = ["E501"]
+
+[tool.pyright]
+reportMissingTypeStubs = false
+reportUnknownMemberType = false
+reportUnknownVariableType = false
