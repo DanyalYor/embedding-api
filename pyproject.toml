@@ -1,38 +1,40 @@
-[project]
+[tool.poetry]
 name = "embedding-api"
 version = "0.1.0"
-description = "API for embedding model"
-authors = [
-    {name = "Your Name",email = "you@example.com"}
-]
-license = {text = "MIT"}
-requires-python = ">=3.13"
-dependencies = [
-    "fastapi[standard] (>=0.135.0,<0.136.0)",
-    "optimum-onnx (>=0.1.0,<0.2.0)",
-    "onnxruntime (>=1.20.0,<2.0.0)",
-    "httpx (>=0.28.0,<1.0.0)"
-]
+description = "Production-ready Embedding API"
+authors = ["dayo"]
+packages = [{include = "embedding_api", from = "src"}]
 
-[tool.pytest.ini_options]
-asyncio_mode = "auto"
-
-[tool.ruff]
-line-length = 100
-target-version = "py313"
-
-[tool.pyright]
-pythonVersion = "3.13"
-reportMissingImports = false
-reportMissingTypeStubs = false
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.109.0"
+uvicorn = {extras = ["standard"], version = "^0.27.0"}
+pydantic = "^2.5.0"
+pydantic-settings = "^2.1.0"
+structlog = "^24.1.0"
+transformers = "^4.37.0"
+optimum = {extras = ["onnxruntime"], version = "^1.16.0"}
+torch = "^2.1.0"
+numpy = "^1.26.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0.0"
-pytest-asyncio = "^0.24.0"
-ruff = "^0.8.0"
+ruff = "^0.1.0"
 pyright = "^1.1.0"
-
+httpx = "^0.26.0"
 
 [build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
+requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "C4", "UP", "RUF"]
+ignore = ["E501"]
+
+[tool.pyright]
+venv = ".venv"
+venvPath = "."
