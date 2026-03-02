@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     host: str = "0.0.0.0"
     port: int = 8000
+    file_name: str = "onnx/model.onnx"
     model_name: str = "intfloat/multilingual-e5-large"
     model_cache_dir: str = "./models"
     provider: str = "CPUExecutionProvider"
