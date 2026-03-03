@@ -16,6 +16,7 @@ configure_logging()
 
 logger = structlog.get_logger()
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     start = time.time()
@@ -27,7 +28,9 @@ async def lifespan(app: FastAPI):
         duration = (time.time() - start) * 1000
         logger.info("model_loaded", duration_ms=round(duration, 2))
         MetricsCollector.set_model_loaded(settings.model_name, True)
-        MetricsCollector.record_model_load_duration(settings.model_name, duration / 1000)
+        MetricsCollector.record_model_load_duration(
+            settings.model_name, duration / 1000
+        )
     except Exception as e:
         logger.error("model_load_failed", error=str(e), exc_info=True)
         raise
@@ -36,6 +39,7 @@ async def lifespan(app: FastAPI):
 
     logger.info("app_shutting_down")
     app.state.service = None
+
 
 app = FastAPI(
     title=settings.app_name,
@@ -47,6 +51,7 @@ app = FastAPI(
 )
 
 Instrumentator().instrument(app).expose(app, endpoint="/metrics")
+
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
@@ -80,16 +85,28 @@ async def log_requests(request: Request, call_next):
         )
         raise
 
+
 @app.get("/health")
 async def health_check() -> JSONResponse:
+    """
+    Health check endpoint.
+
+    Returns 200 if the service is healthy (app is running).
+    """
     ready = hasattr(app.state, "service") and app.state.service is not None
     return JSONResponse(
         content={"status": "healthy", "ready": ready},
         status_code=200 if ready else 503,
     )
 
+
 @app.get("/ready")
 async def readiness_check() -> JSONResponse:
+    """
+    Readiness check endpoint.
+
+    Returns 200 only if the model is fully loaded and ready to serve requests.
+    """
     ready = hasattr(app.state, "service") and app.state.service is not None
     logger.debug("readiness_check", ready=ready)
     return JSONResponse(
@@ -97,8 +114,28 @@ async def readiness_check() -> JSONResponse:
         status_code=200 if ready else 503,
     )
 
+
 @app.post("/api/v1/embed", response_model=EmbedResponse)
 async def embed_v1(body: EmbedRequest, request: Request) -> EmbedResponse:
+    """
+    Generate embeddings for input texts.
+
+    **Request body:**
+    ```json
+    {
+      "texts": ["text to embed", "another text"],
+      "task_type": "query" | "passage" | null   
+    }
+    ```
+
+    **Response:**
+    ```json
+    {
+      "embeddings": [[0.1, 0.2, ...], ...],  
+      "model": "intfloat/multilingual-e5-large"
+    }
+    ```
+    """
     service = app.state.service
     if service is None:
         logger.error("inference_attempted_without_model")
@@ -115,7 +152,7 @@ async def embed_v1(body: EmbedRequest, request: Request) -> EmbedResponse:
     if len(body.texts) > settings.max_batch_size:
         raise HTTPException(
             status_code=422,
-            detail=f"Request contained {len(body.texts)} texts which exceeds max_batch_size of {settings.max_batch_size}"
+            detail=f"Request contained {len(body.texts)} texts which exceeds max_batch_size of {settings.max_batch_size}",
         )
 
     try:
