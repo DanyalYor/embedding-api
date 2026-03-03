@@ -9,7 +9,6 @@ from embedding_api.config import settings
 
 logger = structlog.get_logger()
 
-
 class EmbeddingService:
     def __init__(self):
         self.model_name = settings.model_name
@@ -20,14 +19,12 @@ class EmbeddingService:
 
         needs_export = not (self.cache_path / "model.onnx").exists()
 
-        if settings.environment == "production" and needs_export:
-            logger.error(
-                "production_model_missing",
+        if needs_export:
+            logger.info(
+                "model_export_needed",
+                model=self.model_name,
                 cache_path=str(self.cache_path),
-                hint="Pre-export model during Docker build",
-            )
-            raise RuntimeError(
-                f"Production mode: pre-exported model not found at {self.cache_path}"
+                hint="This will take some minutes on first run",
             )
 
         logger.info(
@@ -56,7 +53,11 @@ class EmbeddingService:
 
         if needs_export:
             self.model.save_pretrained(str(self.cache_path))
-            logger.info("model_exported", cache_path=str(self.cache_path))
+            logger.info(
+                "model_exported",
+                cache_path=str(self.cache_path),
+                duration_ms=round(load_duration, 2),
+            )
         else:
             logger.info("model_loaded_from_cache", cache_path=str(self.cache_path))
 
