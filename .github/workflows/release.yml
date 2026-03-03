@@ -1,0 +1,181 @@
+name: Release Pipeline
+
+on:
+  push:
+    branches:
+      - '[0-9]+.[0-9]+.x'
+
+jobs:
+  build:
+    name: Build Image
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      image: ${{ steps.version.outputs.image }}
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Extract version from branch name
+        id: version
+        run: |
+          BRANCH=${{ github.head_ref }}
+          VERSION=$(echo "$BRANCH" | grep -oP '^\d+\.\d+')
+          TAG=$VERSION.${{ github.run_number }}
+          IMAGE=ghcr.io/${{ github.repository }}:$TAG
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "image=$IMAGE" >> $GITHUB_OUTPUT
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: ${{ steps.version.outputs.image }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  test:
+    name: Run Test Suite
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Install dependencies
+        run: poetry install --with dev
+
+      - name: Run unit tests
+        run: poetry run pytest tests/ -v --tb=short
+
+      - name: Run linter
+        run: poetry run ruff check src/ tests/
+
+      - name: Run type checker
+        run: poetry run pyright src/ tests/
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: build
+    continue-on-error: true
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          format: spdx-json
+          artifact-name: sbom-${{ needs.build.outputs.tag }}
+
+  push:
+    name: Push to Container Registry
+    runs-on: ubuntu-latest
+    needs: [build, test, security-scan]
+    if: github.event.pull_request.merged == true
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Login to container registry
+        run: echo "Login to ${{ vars.CONTAINER_REGISTRY || 'ghcr.io' }}"
+
+      - name: Push image to registry
+        run: |
+          echo "Push: ${{ needs.build.outputs.image }}"
+          echo "Also tag: ${{ needs.build.outputs.version }}-latest"
+
+      - name: Sign container image
+        run: echo "Would sign image with cosign for supply chain security"
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: push
+    environment: staging
+
+    steps:
+      - name: Deploy to staging cluster
+        run: |
+          echo "Deploy ${{ needs.build.outputs.image }} to staging"
+          echo "Target: Kubernetes cluster / ECS cluster / etc."
+
+      - name: Run smoke tests
+        run: |
+          echo "Run smoke tests against staging environment"
+          echo "Endpoints: /health, /ready, /embed"
+
+      - name: Notify staging deployment
+        run: echo "As deployment can take some time, notify us when ready via mail/teams/etc."
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    environment: production
+    if: github.event.pull_request.merged == true
+
+    steps:
+      - name: Wait for staging validation
+        run: echo "Wait for manual approval or automated validation"
+
+      - name: Deploy to production cluster
+        run: |
+          echo "Deploy ${{ needs.build.outputs.image }} to production"
+          echo "Strategy: Blue-green / Canary / Rolling update"
+
+      - name: Verify production health
+        run: |
+          echo "Verify /health and /ready endpoints"
+          echo "Check error rates and latency metrics"
+
+      - name: Notify production deployment
+        run: echo "Send Teams/Email notification for production deploy"
+
+  cleanup:
+    name: Cleanup
+    runs-on: ubuntu-latest
+    needs: [deploy-staging, deploy-production]
+    if: always()
+
+    steps:
+      - name: Clean up temporary artifacts
+        run: echo "Clean up old images and temporary resources"
+
+      - name: Update deployment log
+        run: |
+          echo "Deployment complete for ${{ needs.build.outputs.image }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "PR: ${{ github.event.pull_request.number }}"
