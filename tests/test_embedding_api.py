@@ -23,7 +23,12 @@ def test_embed_v1_valid_input(client):
     assert "embeddings" in data
     assert data["model"] == "intfloat/multilingual-e5-large"
 
-def test_embed_v1_batch_input(client):
+def test_embed_v1_batch_input(client, mock_embedding_service):
+    mock_embedding_service.return_value.embed.return_value = [
+        [0.1] * 1024,  
+        [0.2] * 1024, 
+    ]
+
     response = client.post("/api/v1/embed", json={"texts": ["hello", "world"]})
     assert response.status_code == 200
     data = response.json()
@@ -49,6 +54,14 @@ def test_embed_v1_service_not_ready(client, mock_embedding_service):
     assert "not ready" in response.json()["detail"].lower()
 
 def test_metrics_endpoint(client):
+    client.post("/api/v1/embed", json={"texts": ["hello"]})
+    
     response = client.get("/metrics")
     assert response.status_code == 200
-    assert "embed_requests_total" in response.text
+    
+    assert "http_requests_total" in response.text
+    assert 'handler="/api/v1/embed"' in response.text
+    
+    assert "embed_batch_size" in response.text
+    assert "embed_inference_duration_seconds" in response.text
+    assert "model_loaded" in response.text
