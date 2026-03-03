@@ -20,12 +20,18 @@ optimum = {extras = ["onnxruntime"], version = "1.17.1"}
 sentence-transformers = "^3.2.0"
 transformers = "^4.40.0"
 torch = ">=2.5.0"
+prometheus-fastapi-instrumentator = "^7.1.0"
+prometheus-client = "^0.24.1"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0.0"
 pyright = "^1.1.0"
 httpx = "^0.26.0"
 ruff = "^0.15.4"
+pytest-prometheus = "^0.1"
+
+[tool.poetry.requires-plugins]
+poetry-plugin-export = ">=1.8"
 
 [build-system]
 requires = ["poetry-core"]
